@@ -39,7 +39,7 @@ if not api_key:
 ## LLM model
 llm=ChatGroq(groq_api_key=api_key,model_name="Llama3-8b-8192",streaming=True)
 
-@st.cache_resource(ttl="2h")
+@st.cache_resource(ttl="2h") #Caches the database connection so it doesn’t reconnect every time. Improves performance.
 def configure_db(db_uri,mysql_host=None,mysql_user=None,mysql_password=None,mysql_db=None):
     if db_uri==LOCALDB:
         dbfilepath=(Path(__file__).parent/"student.db").absolute()
@@ -51,6 +51,8 @@ def configure_db(db_uri,mysql_host=None,mysql_user=None,mysql_password=None,mysq
             st.error("Please provide all MySQL connection details.")
             st.stop()
         return SQLDatabase(create_engine(f"mysql+mysqlconnector://{mysql_user}:{mysql_password}@{mysql_host}/{mysql_db}"))   
+    #mysql+mysqlconnector://<username>:<password>@<host>/<database_name>
+    #This tells SQLAlchemy to use the MySQL connector and log into the students database on your local MySQL server using the provided credentials.
     
 if db_uri==MYSQL:
     db=configure_db(db_uri,mysql_host,mysql_user,mysql_password,mysql_db)
@@ -64,7 +66,7 @@ agent=create_sql_agent(
     llm=llm,
     toolkit=toolkit,
     verbose=True,
-    agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION
+    agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION #AgentType.ZERO_SHOT_REACT_DESCRIPTION means the LLM is given tools and figures things out on its own without examples.
 )
 
 if "messages" not in st.session_state or st.sidebar.button("Clear message history"):
@@ -79,7 +81,7 @@ if user_query:
     st.session_state.messages.append({"role": "user", "content": user_query})
     st.chat_message("user").write(user_query)
 
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant"): #chain of thoughts will be shown as shown in previous sessions
         streamlit_callback=StreamlitCallbackHandler(st.container())
         response=agent.run(user_query,callbacks=[streamlit_callback])
         st.session_state.messages.append({"role":"assistant","content":response})
